@@ -7,7 +7,7 @@ terraform {
   }
 
   backend "s3" {
-    bucket = "your-terraform-state-bucket"
+    bucket = "load-balancer-flask-app-with-docker"
     key    = "terraform.tfstate"
     region = "eu-central-1"
   }
