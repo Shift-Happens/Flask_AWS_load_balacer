@@ -5,6 +5,12 @@ terraform {
       version = "~> 5.0"
     }
   }
+  
+  backend "s3" {
+    bucket = "your-terraform-state-bucket"
+    key    = "terraform.tfstate"
+    region = "eu-central-1"
+  }
 }
 
 provider "aws" {
@@ -75,7 +81,7 @@ resource "aws_route_table_association" "public_2" {
   route_table_id = aws_route_table.public.id
 }
 
-# Security Groups
+# Security Group dla EC2
 resource "aws_security_group" "ec2" {
   name        = "ec2-security-group"
   description = "Security group for EC2 instances"
@@ -88,18 +94,22 @@ resource "aws_security_group" "ec2" {
     security_groups = [aws_security_group.alb.id]
   }
 
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = {
-    Name = "ec2-sg"
-  }
 }
 
+# Security Group dla ALB
 resource "aws_security_group" "alb" {
   name        = "alb-security-group"
   description = "Security group for Application Load Balancer"
@@ -118,13 +128,9 @@ resource "aws_security_group" "alb" {
     protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
-
-  tags = {
-    Name = "alb-sg"
-  }
 }
 
-# IAM
+# IAM role dla EC2
 resource "aws_iam_role" "ec2_role" {
   name = "ec2-docker-role"
 
@@ -142,22 +148,23 @@ resource "aws_iam_role" "ec2_role" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "ecr_policy" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
+}
+
 resource "aws_iam_instance_profile" "ec2_profile" {
   name = "ec2-docker-profile"
   role = aws_iam_role.ec2_role.name
 }
 
-# ALB
+# Application Load Balancer
 resource "aws_lb" "app" {
   name               = "system-info-alb"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
   subnets           = [aws_subnet.public_1.id, aws_subnet.public_2.id]
-
-  tags = {
-    Name = "system-info-alb"
-  }
 }
 
 resource "aws_lb_target_group" "app" {
@@ -176,10 +183,6 @@ resource "aws_lb_target_group" "app" {
     protocol           = "HTTP"
     timeout            = 5
     unhealthy_threshold = 2
-  }
-
-  tags = {
-    Name = "system-info-tg"
   }
 }
 
@@ -211,10 +214,9 @@ resource "aws_launch_template" "app" {
 
   user_data = base64encode(<<-EOF
               #!/bin/bash
-              yum update -y
-              yum install -y docker
-              systemctl start docker
-              systemctl enable docker
+              amazon-linux-extras install docker
+              service docker start
+              usermod -a -G docker ec2-user
               docker pull ${var.docker_image}:${var.docker_tag}
               docker run -d -p 5000:5000 ${var.docker_image}:${var.docker_tag}
               EOF
@@ -228,7 +230,7 @@ resource "aws_launch_template" "app" {
   }
 }
 
-# Auto Scaling Group
+# EC2 Auto Scaling Group
 resource "aws_autoscaling_group" "app" {
   desired_capacity    = 2
   max_size           = 4
