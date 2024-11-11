@@ -214,8 +214,7 @@ resource "aws_launch_template" "app" {
 
   user_data = base64encode(<<-EOF
               #!/bin/bash
-              amazon-linux-extras install docker
-              service docker start
+              sudo yum install -y docker
               usermod -a -G docker ec2-user
               docker pull ${var.docker_image}:${var.docker_tag}
               docker run -d -p 5000:5000 ${var.docker_image}:${var.docker_tag}
