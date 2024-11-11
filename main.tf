@@ -5,7 +5,7 @@ terraform {
       version = "~> 5.75.1"
     }
   }
-  
+
   backend "s3" {
     bucket = "your-terraform-state-bucket"
     key    = "terraform.tfstate"
@@ -30,7 +30,7 @@ resource "aws_vpc" "main" {
 
 resource "aws_subnet" "public_1" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block             = "10.0.1.0/24"
+  cidr_block              = "10.0.1.0/24"
   availability_zone       = "${var.aws_region}a"
   map_public_ip_on_launch = true
 
@@ -41,7 +41,7 @@ resource "aws_subnet" "public_1" {
 
 resource "aws_subnet" "public_2" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block             = "10.0.2.0/24"
+  cidr_block              = "10.0.2.0/24"
   availability_zone       = "${var.aws_region}b"
   map_public_ip_on_launch = true
 
@@ -164,7 +164,7 @@ resource "aws_lb" "app" {
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.alb.id]
-  subnets           = [aws_subnet.public_1.id, aws_subnet.public_2.id]
+  subnets            = [aws_subnet.public_1.id, aws_subnet.public_2.id]
 }
 
 resource "aws_lb_target_group" "app" {
@@ -177,11 +177,11 @@ resource "aws_lb_target_group" "app" {
     enabled             = true
     healthy_threshold   = 2
     interval            = 30
-    matcher            = "200"
-    path               = "/"
-    port               = "traffic-port"
-    protocol           = "HTTP"
-    timeout            = 5
+    matcher             = "200"
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
     unhealthy_threshold = 2
   }
 }
@@ -232,10 +232,10 @@ resource "aws_launch_template" "app" {
 
 # EC2 Auto Scaling Group
 resource "aws_autoscaling_group" "app" {
-  desired_capacity    = 2
-  max_size           = 4
-  min_size           = 2
-  target_group_arns  = [aws_lb_target_group.app.arn]
+  desired_capacity     = 2
+  max_size            = 4
+  min_size            = 2
+  target_group_arns   = [aws_lb_target_group.app.arn]
   vpc_zone_identifier = [aws_subnet.public_1.id, aws_subnet.public_2.id]
 
   launch_template {
@@ -250,7 +250,6 @@ resource "aws_autoscaling_group" "app" {
   }
 }
 
-# variables.tf
 variable "aws_region" {
   description = "AWS region"
   type        = string
@@ -274,7 +273,6 @@ variable "docker_tag" {
   default     = "latest"
 }
 
-# outputs.tf
 output "alb_dns_name" {
   description = "DNS name of the load balancer"
   value       = aws_lb.app.dns_name
