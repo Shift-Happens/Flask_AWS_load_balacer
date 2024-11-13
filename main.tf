@@ -214,18 +214,14 @@ resource "aws_launch_template" "app" {
 
   user_data = base64encode(<<-EOF
                 #!/bin/bash
-                # Update packages and install Docker
                 sudo yum update -y
                 sudo yum install -y docker
 
-                # Start and enable Docker service
                 sudo systemctl start docker
                 sudo systemctl enable docker
 
-                # Add ec2-user to Docker group for future use (this won’t affect the current session)
                 sudo usermod -a -G docker ec2-user
 
-                # Pull and run the Docker image
                 sudo docker pull ${var.docker_image}:${var.docker_tag}
                 sudo docker run -d -p 5000:5000 ${var.docker_image}:${var.docker_tag}
                 EOF
@@ -274,6 +270,7 @@ variable "ami_id" {
 variable "docker_image" {
   description = "Docker image to deploy"
   type        = string
+  default     = "shifthappens420/system-info-app"
 }
 
 variable "docker_tag" {
